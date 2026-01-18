@@ -62,7 +62,7 @@ PIECE_COLORS: Dict[str, Tuple[int, int, int]] = {
 ALL_KINDS = list(PIECE_DEFS.keys())
 
 def random_bag(rng: random.Random) -> List[str]:
-    """7-bag：把 IOTSZJL 隨機洗牌後依序出。"""
+    """7-bag: Shuffle IOTSZJL and return them in order."""
     bag = ALL_KINDS[:]
     rng.shuffle(bag)
     return bag

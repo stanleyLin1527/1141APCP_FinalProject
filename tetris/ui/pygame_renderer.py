@@ -20,16 +20,25 @@ class PygameRenderer(RendererBase):
         self.w = self.cell * self.cols + self.panel_w
         self.h = self.cell * self.rows
 
-        self.screen = pygame.display.set_mode((self.w, self.h))
+        # Check if fullscreen mode is enabled
+        fullscreen = bool(settings.get("fullscreen", False))
+        if fullscreen:
+            self.screen = pygame.display.set_mode((self.w, self.h), pygame.FULLSCREEN)
+        else:
+            self.screen = pygame.display.set_mode((self.w, self.h))
         self.clock = pygame.time.Clock()
 
-        self.font = pygame.font.SysFont(None, 24)
-        self.font_big = pygame.font.SysFont(None, 40)
+        # 使用支持中文的字體
+        # 嘗試常見的中文字體，如果都找不到則使用系統默認字體
+        chinese_fonts = ['Microsoft JhengHei', 'Microsoft YaHei', 'SimHei', 'Arial Unicode MS', 'sans-serif']
+        self.font = pygame.font.SysFont(chinese_fonts, 24)
+        self.font_big = pygame.font.SysFont(chinese_fonts, 40)
 
         self.bg = (18, 18, 18)
         self.grid_line = (40, 40, 40)
         self.panel_bg = (24, 24, 24)
         self.text_color = (230, 230, 230)
+        self.is_fullscreen = fullscreen
 
     def tick(self) -> int:
         fps = int(self.settings.get("fps", 60))
@@ -45,6 +54,14 @@ class PygameRenderer(RendererBase):
     def end_frame(self) -> None:
         pygame.display.flip()
 
+    def toggle_fullscreen(self) -> None:
+        """Toggle between fullscreen and windowed mode"""
+        self.is_fullscreen = not self.is_fullscreen
+        if self.is_fullscreen:
+            self.screen = pygame.display.set_mode((self.w, self.h), pygame.FULLSCREEN)
+        else:
+            self.screen = pygame.display.set_mode((self.w, self.h))
+    
     def shutdown(self) -> None:
         pygame.quit()
 
@@ -81,12 +98,33 @@ class PygameRenderer(RendererBase):
             my = cy + (o.y - miny) * s
             pygame.draw.rect(self.screen, color, pygame.Rect(mx, my, s, s).inflate(-2, -2))
 
-    def draw_menu(self, player_name: str, hint: str, highscores: List[Dict[str, Any]]) -> None:
+    def draw_menu(self, player_name: str, hint: str, highscores: List[Dict[str, Any]], 
+                  music_volume: float = 0.5, sfx_volume: float = 0.5) -> None:
         self.begin_frame()
         self._draw_text("TETRIS", 30, 20, big=True)
-        self._draw_text("Enter：開始", 30, 80)
-        self._draw_text("ESC：退出", 30, 110)
-        self._draw_text("輸入玩家名（可直接打字、Backspace刪除）：", 30, 160)
+        self._draw_text("Enter: Start Game", 30, 80)
+        self._draw_text("ESC: Quit", 30, 110)
+        
+        # Volume controls
+        self._draw_text("Volume Controls:", 30, 260)
+        self._draw_text(f"Music (Up/Down): {int(music_volume * 100)}%", 30, 290)
+        self._draw_text(f"SFX (Left/Right): {int(sfx_volume * 100)}%", 30, 320)
+        
+        # Draw volume bars
+        bar_width = 200
+        bar_height = 20
+        
+        # Music volume bar
+        pygame.draw.rect(self.screen, (60, 60, 60), pygame.Rect(30, 350, bar_width, bar_height))
+        pygame.draw.rect(self.screen, (100, 200, 100), pygame.Rect(30, 350, int(bar_width * music_volume), bar_height))
+        pygame.draw.rect(self.screen, (80, 80, 80), pygame.Rect(30, 350, bar_width, bar_height), 2)
+        
+        # SFX volume bar
+        pygame.draw.rect(self.screen, (60, 60, 60), pygame.Rect(30, 380, bar_width, bar_height))
+        pygame.draw.rect(self.screen, (100, 150, 200), pygame.Rect(30, 380, int(bar_width * sfx_volume), bar_height))
+        pygame.draw.rect(self.screen, (80, 80, 80), pygame.Rect(30, 380, bar_width, bar_height), 2)
+        
+        self._draw_text("Enter Player Name (Type to edit, Backspace to delete):", 30, 160)
         self._draw_text(f"> {player_name}", 30, 190)
         if hint:
             self._draw_text(hint, 30, 230)
@@ -145,9 +183,9 @@ class PygameRenderer(RendererBase):
         else:
             self._draw_text("(empty)", px, 450)
 
-        self._draw_text("P：Pause", px, 560)
-        self._draw_text("Space：Hard Drop", px, 584)
-        self._draw_text("ESC：Menu", px, 608)
+        self._draw_text("P: Pause", px, 560)
+        self._draw_text("Space: Hard Drop", px, 584)
+        self._draw_text("ESC: Menu", px, 608)
 
         if paused:
             overlay = pygame.Surface((self.cell * self.cols, self.h), pygame.SRCALPHA)
@@ -163,8 +201,8 @@ class PygameRenderer(RendererBase):
         self._draw_text(f"Score: {score}", 30, 90)
         self._draw_text(f"Level: {level}", 30, 120)
         self._draw_text(f"Lines: {total_lines}", 30, 150)
-        self._draw_text("R：Restart", 30, 200)
-        self._draw_text("ESC：Menu", 30, 230)
+        self._draw_text("R: Restart", 30, 200)
+        self._draw_text("ESC: Menu", 30, 230)
 
         px = self.cell * self.cols + 20
         self._draw_text("High Scores (Top 10)", px, 20)

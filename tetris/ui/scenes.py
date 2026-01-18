@@ -10,7 +10,7 @@ from tetris.core.board import Board
 from tetris.core.vec2 import Vec2
 from tetris.core.tetromino import Tetromino
 from tetris.core.pieces import random_bag
-from tetris.core.rules import score_for_lines, level_for_total_lines, drop_interval_ms
+from tetris.core.rules import score_for_lines, level_for_total_lines, drop_interval_ms, check_tspin
 from tetris.utils.timer import DropTimer
 
 class Scene:
@@ -27,10 +27,11 @@ class Scene:
         pass
 
 class SceneManager:
-    def __init__(self, renderer: RendererBase, storage: JsonStorage, input_controller: InputController):
+    def __init__(self, renderer: RendererBase, storage: JsonStorage, input_controller: InputController, audio_manager):
         self.renderer = renderer
         self.storage = storage
         self.input = input_controller
+        self.audio = audio_manager
         self.scene: Scene | None = None
         self.running = True
 
@@ -47,6 +48,9 @@ class SceneManager:
                 if ev.type == pygame.QUIT:
                     self.running = False
                     break
+                # F11 to toggle fullscreen
+                if ev.type == pygame.KEYDOWN and ev.key == pygame.K_F11:
+                    self.renderer.toggle_fullscreen()
                 if self.scene:
                     self.scene.handle_event(ev)
             if self.scene:
@@ -59,12 +63,22 @@ class MenuScene(Scene):
         self.player_name = str(self.m.storage.load_settings().get("player_name", "Player"))
         self.hint = ""
         self.highscores = self.m.storage.load_highscores()
+        
+        # Volume control
+        settings = self.m.storage.load_settings()
+        self.music_volume = float(settings.get("music_volume", 0.5))
+        self.sfx_volume = float(settings.get("sfx_volume", 0.5))
+        
+        # Play menu music
+        self.m.audio.play_bgm("tetoris.mp3")
 
     def handle_event(self, ev: Any) -> None:
         if ev.type == pygame.KEYDOWN:
             if ev.key == pygame.K_RETURN:
                 settings = self.m.storage.load_settings()
                 settings["player_name"] = self.player_name.strip() or "Player"
+                settings["music_volume"] = self.music_volume
+                settings["sfx_volume"] = self.sfx_volume
                 self.m.storage.save_settings(settings)
                 self.m.set_scene(GameScene(self.m))
                 return
@@ -74,13 +88,39 @@ class MenuScene(Scene):
             if ev.key == pygame.K_BACKSPACE:
                 self.player_name = self.player_name[:-1]
                 return
+            
+            # Volume controls
+            if ev.key == pygame.K_UP:
+                # Increase music volume
+                self.music_volume = min(1.0, self.music_volume + 0.1)
+                self.m.audio.set_music_volume(self.music_volume)
+                self.m.audio.play_sfx("SFX_ButtonUp.ogg")
+                return
+            if ev.key == pygame.K_DOWN:
+                # Decrease music volume
+                self.music_volume = max(0.0, self.music_volume - 0.1)
+                self.m.audio.set_music_volume(self.music_volume)
+                self.m.audio.play_sfx("SFX_ButtonUp.ogg")
+                return
+            if ev.key == pygame.K_RIGHT:
+                # Increase SFX volume
+                self.sfx_volume = min(1.0, self.sfx_volume + 0.1)
+                self.m.audio.set_sfx_volume(self.sfx_volume)
+                self.m.audio.play_sfx("SFX_ButtonUp.ogg")
+                return
+            if ev.key == pygame.K_LEFT:
+                # Decrease SFX volume
+                self.sfx_volume = max(0.0, self.sfx_volume - 0.1)
+                self.m.audio.set_sfx_volume(self.sfx_volume)
+                self.m.audio.play_sfx("SFX_ButtonUp.ogg")
+                return
 
             ch = ev.unicode
             if ch and ch.isprintable() and len(self.player_name) < 16 and ch not in ["\r", "\n", "\t"]:
                 self.player_name += ch
 
     def draw(self) -> None:
-        self.m.renderer.draw_menu(self.player_name, self.hint, self.highscores)
+        self.m.renderer.draw_menu(self.player_name, self.hint, self.highscores, self.music_volume, self.sfx_volume)
 
 class GameScene(Scene):
     def __init__(self, manager: SceneManager):
@@ -102,10 +142,17 @@ class GameScene(Scene):
 
         self.active = self._spawn_piece()
         self.hold_kind: Optional[str] = None
-        self.hold_locked = False  # 一顆方塊從生成到 lock 前，只允許 hold 一次
+        self.hold_locked = False  # Only allow hold once per piece from spawn to lock
 
         self.timer = DropTimer(drop_interval_ms(self.level))
         self.soft_drop_held = False
+        
+        # Track whether last action was a rotation (for T-spin detection)
+        self.last_action_was_rotate = False
+        
+        # Play game music
+        self.m.audio.play_bgm("tetoris.mp3")
+        self.m.audio.play_sfx("SFX_GameStart.ogg")
 
         if not self.board.can_place(self.active):
             self._game_over()
@@ -131,37 +178,75 @@ class GameScene(Scene):
         np = self.active.pos + (dx, dy)
         if self.board.can_place(self.active, pos=np):
             self.active.pos = np
+            # Movement resets rotation flag
+            if dx != 0:  # Only horizontal movement resets
+                self.last_action_was_rotate = False
+                self.m.audio.play_sfx("SFX_PieceMoveLR.ogg")
             return True
         return False
 
     def _try_rotate(self, dir: int) -> bool:
         nr = self.active.rotated(dir)
-        # 簡易 wall-kick
+        # Simple wall-kick
         kicks = [(0,0), (1,0), (-1,0), (2,0), (-2,0)]
         for kx, ky in kicks:
             np = self.active.pos + (kx, ky)
             if self.board.can_place(self.active, pos=np, rot=nr):
                 self.active.pos = np
                 self.active.rot = nr
+                # Mark last action as rotation
+                self.last_action_was_rotate = True
+                self.m.audio.play_sfx("SFX_PieceRotateLR.ogg")
                 return True
         return False
 
     def _hard_drop(self) -> None:
         while self._try_move(0, 1):
             pass
+        self.m.audio.play_sfx("SFX_PieceHardDrop.ogg")
         self._lock_and_continue()
 
     def _lock_and_continue(self) -> None:
+        # Detect T-spin
+        is_tspin, is_mini = check_tspin(self.board, self.active, self.last_action_was_rotate)
+        
         self.board.lock(self.active)
         cleared = self.board.clear_lines()
+        
         if cleared:
-            self.score += score_for_lines(cleared, self.level)
+            # Play line clear sound effect
+            if is_tspin:
+                if cleared == 3:
+                    self.m.audio.play_sfx("SFX_SpecialTSpinTriple.ogg")
+                elif cleared == 2:
+                    self.m.audio.play_sfx("SFX_SpecialTSpinDouble.ogg")
+                elif cleared == 1:
+                    self.m.audio.play_sfx("SFX_SpecialTSpinSingle.ogg")
+                else:
+                    self.m.audio.play_sfx("SFX_SpecialTSpin.ogg")
+            elif cleared == 4:
+                self.m.audio.play_sfx("SFX_SpecialTetris.ogg")
+            elif cleared == 3:
+                self.m.audio.play_sfx("SFX_SpecialLineClearTriple.ogg")
+            elif cleared == 2:
+                self.m.audio.play_sfx("SFX_SpecialLineClearDouble.ogg")
+            else:
+                self.m.audio.play_sfx("SFX_SpecialLineClearSingle.ogg")
+            
+            old_level = self.level
+            self.score += score_for_lines(cleared, self.level, is_tspin, is_mini)
             self.total_lines += cleared
             self.level = level_for_total_lines(self.total_lines)
+            
+            # Level up sound effect
+            if self.level > old_level:
+                self.m.audio.play_sfx("SFX_LevelUp.ogg")
+            
             self.timer.set_interval(drop_interval_ms(self.level))
 
         self.active = self._spawn_piece()
         self.hold_locked = False
+        self.last_action_was_rotate = False  # Reset rotation flag
 
         if not self.board.can_place(self.active):
             self._game_over()
@@ -180,6 +265,9 @@ class GameScene(Scene):
             self.active = self._spawn_piece(kind=swap_kind)
 
         self.hold_locked = True
+        self.last_action_was_rotate = False  # Reset rotation flag
+        self.m.audio.play_sfx("SFX_PieceHold.ogg")
+        
         if not self.board.can_place(self.active):
             self._game_over()
 
@@ -192,6 +280,7 @@ class GameScene(Scene):
         return [(c.x, c.y) for c in self.active.cells(pos=p)]
 
     def _game_over(self) -> None:
+        self.m.audio.play_sfx("SFX_GameOver.ogg")
         settings = self.m.storage.load_settings()
         name = str(settings.get("player_name", "Player"))
         max_rows = int(settings.get("max_highscores", 10))
@@ -206,12 +295,19 @@ class GameScene(Scene):
         if act is None:
             return
 
+        self._process_action(act)
+
+    def _process_action(self, act) -> None:
         if act.name == "back":
             self.m.set_scene(MenuScene(self.m))
             return
 
         if act.name == "pause":
             self.paused = not self.paused
+            if self.paused:
+                self.m.audio.pause_bgm()
+            else:
+                self.m.audio.unpause_bgm()
             return
 
         if self.paused:
@@ -234,6 +330,11 @@ class GameScene(Scene):
     def update(self, dt_ms: int) -> None:
         if self.paused:
             return
+
+        # Handle DAS (continuous movement)
+        repeated_actions = self.m.input.update(dt_ms)
+        for act in repeated_actions:
+            self._process_action(act)
 
         if self.soft_drop_held:
             steps = max(1, dt_ms // 16)
@@ -267,6 +368,9 @@ class GameOverScene(Scene):
         self.level = level
         self.total_lines = total_lines
         self.highscores = highscores
+        
+        # Play game over music
+        self.m.audio.play_bgm("tetoris.mp3", loop=False)
 
     def handle_event(self, ev: Any) -> None:
         act = self.m.input.map_event(ev)

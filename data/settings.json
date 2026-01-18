@@ -1,9 +1,9 @@
 {
-  "cell_size": 30,
+  "cell_size": 40,
   "fps": 60,
-  "music_volume": 0.0,
-  "sfx_volume": 0.0,
-  "player_name": "Player",
+  "music_volume": 0.5,
+  "sfx_volume": 0.5,
+  "player_name": "fuffdsa",
   "keymap": {
     "left": "LEFT",
     "right": "RIGHT",
@@ -17,5 +17,8 @@
   },
   "show_ghost": true,
   "next_count": 3,
-  "max_highscores": 10
+  "max_highscores": 10,
+  "fullscreen": false,
+  "das_delay": 170,
+  "das_interval": 50
 }
