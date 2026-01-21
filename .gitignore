@@ -1,4 +1,5 @@
-/data/highscores.json
+data/highscores.json
+data/settings.json
 
 # Python cache
 __pycache__/
