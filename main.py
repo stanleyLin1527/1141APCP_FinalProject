@@ -1,7 +1,7 @@
 from tetris.io.json_storage import JsonStorage
-from tetris.ui.pygame_renderer import PygameRenderer
-from tetris.ui.input_controller import InputController
-from tetris.ui.scenes import SceneManager, MenuScene
+from ui.pygame_renderer import PygameRenderer
+from ui.input_controller import InputController
+from ui.scenes import SceneManager, MenuScene
 from tetris.audio.audio_manager import AudioManager
 
 def main() -> int:
