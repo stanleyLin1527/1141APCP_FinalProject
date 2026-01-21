@@ -1,25 +1,39 @@
-# Tetris Project (Python + Pygame)
+# 🎮 Tetris Game - Python Implementation
 
-## 安裝
+## 📋 Requirements
+
+- Python 3.10 or higher
+- Pygame 2.5.0 or higher
+
+## 🚀 Installation
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/stanleyLin1527/114_1_APCP_FinalProject.git
+cd 114_1_APCP_FinalProject
+```
+
+2. **Install dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-## 執行
+## ▶️ Running the Game
+
 ```bash
 python main.py
 ```
 
-## 操作
-- 左/右：移動
-- 上：旋轉
-- 下：軟降（加速下落）
-- Space：硬降（Hard drop）
-- C：Hold（暫存/交換方塊；一個落下週期只能用一次，直到方塊鎖定才解鎖）
-- P：暫停
-- R：重新開始（Game Over 畫面）
-- ESC：返回主選單 / 退出
+## 🎮 Controls
 
-## 資料檔
-- `data/settings.json`：按鍵/音量/玩家名稱等設定
-- `data/highscores.json`：排行榜（前 10 名）
+### In-Game Controls
+| Key | Action |
+|-----|--------|
+| **←/→** | Move left/right (supports DAS - hold to move continuously) |
+| **↑** | Rotate clockwise |
+| **↓** | Soft drop (faster falling) |
+| **Space** | Hard drop (instant drop) |
+| **C** | Hold piece (swap with held piece, once per lock) |
+| **P** | Pause/Resume game |
+| **ESC** | Return to main menu |
+| **F11** | Toggle fullscreen mode |
