@@ -48,9 +48,9 @@ class JsonStorage(StorageBase):
             with open(self.settings_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
-            raise CorruptedDataError(f"settings.json 解析失敗：{e}") from e
+            raise CorruptedDataError(f"Failed to parse settings.json: {e}") from e
         except OSError as e:
-            raise SaveFileError(f"讀取 settings.json 失敗：{e}") from e
+            raise SaveFileError(f"Failed to read settings.json: {e}") from e
 
         merged = dict(DEFAULT_SETTINGS)
         merged.update(data if isinstance(data, dict) else {})
@@ -64,7 +64,7 @@ class JsonStorage(StorageBase):
             with open(self.settings_path, "w", encoding="utf-8") as f:
                 json.dump(settings, f, ensure_ascii=False, indent=2)
         except OSError as e:
-            raise SaveFileError(f"寫入 settings.json 失敗：{e}") from e
+            raise SaveFileError(f"Failed to write settings.json: {e}") from e
 
     def load_highscores(self) -> List[Dict[str, Any]]:
         if not os.path.exists(self.highscores_path):
@@ -75,12 +75,12 @@ class JsonStorage(StorageBase):
             with open(self.highscores_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
-            raise CorruptedDataError(f"highscores.json 解析失敗：{e}") from e
+            raise CorruptedDataError(f"Failed to parse highscores.json: {e}") from e
         except OSError as e:
-            raise SaveFileError(f"讀取 highscores.json 失敗：{e}") from e
+            raise SaveFileError(f"Failed to read highscores.json: {e}") from e
 
         if not isinstance(data, list):
-            raise ConfigError("highscores.json 格式不正確（應為 list）")
+            raise ConfigError("highscores.json format is incorrect (should be a list)")
 
         rows: List[Dict[str, Any]] = []
         for row in data:
@@ -98,7 +98,7 @@ class JsonStorage(StorageBase):
             with open(self.highscores_path, "w", encoding="utf-8") as f:
                 json.dump(rows, f, ensure_ascii=False, indent=2)
         except OSError as e:
-            raise SaveFileError(f"寫入 highscores.json 失敗：{e}") from e
+            raise SaveFileError(f"Failed to write highscores.json: {e}") from e
 
     def add_highscore(self, name: str, score: int, max_rows: int) -> List[Dict[str, Any]]:
         rows = self.load_highscores()
