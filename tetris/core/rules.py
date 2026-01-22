@@ -27,13 +27,13 @@ def drop_interval_ms(level: int) -> int:
 
 def check_tspin(board: "Board", piece: "Tetromino", last_action_was_rotate: bool) -> tuple[bool, bool]:
     """
-    檢測是否為 T-spin
-    返回: (is_tspin, is_mini)
+    Check if the last move was a T-spin.
+    returns: (is_tspin, is_mini)
     
-    T-spin 條件:
-    1. 方塊必須是 T 型
-    2. 最後一個動作必須是旋轉
-    3. 檢查 T 方塊的四個角落位置
+    T-spin conditions:
+    1. Piece must be a T piece
+    2. Last action must be a rotation
+    3. Check the four corners of the T piece
     """
     if piece.kind != "T" or not last_action_was_rotate:
         return False, False
@@ -53,23 +53,23 @@ def check_tspin(board: "Board", piece: "Tetromino", last_action_was_rotate: bool
         if not board.inside(corner) or not board.empty_at(corner):
             filled_corners += 1
     
-    # T-spin: 至少3個角落被佔據
+    # T-spin: at least 3 corners are filled
     if filled_corners >= 3:
-        # 檢查是否為 mini T-spin
-        # 根據旋轉方向和角落檢查判斷
+        # Check if it's a mini T-spin
+        # Based on rotation and corner checks
         rot = piece.rot
         
-        # 檢查關鍵的兩個前角
-        if rot == 0:  # T 朝上
-            front_corners = [corners[0], corners[1]]  # 上方兩個角
-        elif rot == 1:  # T 朝右
-            front_corners = [corners[1], corners[3]]  # 右方兩個角
-        elif rot == 2:  # T 朝下
-            front_corners = [corners[2], corners[3]]  # 下方兩個角
-        else:  # rot == 3, T 朝左
-            front_corners = [corners[0], corners[2]]  # 左方兩個角
+        # Check the two front corners
+        if rot == 0:  # T facing up
+            front_corners = [corners[0], corners[1]]  # Top two corners
+        elif rot == 1:  # T facing right
+            front_corners = [corners[1], corners[3]]  # Right two corners
+        elif rot == 2:  # T facing down
+            front_corners = [corners[2], corners[3]]  # Bottom two corners
+        else:  # rot == 3, T facing left
+            front_corners = [corners[0], corners[2]]  # Left two corners
         
-        # 檢查前角是否都被填充
+        # Check the front corners
         front_filled = sum(1 for c in front_corners if not board.inside(c) or not board.empty_at(c))
         
         is_mini = front_filled < 2
