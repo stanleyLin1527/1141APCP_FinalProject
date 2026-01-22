@@ -10,13 +10,13 @@ from tetris.core.pieces import PIECE_COLORS, PIECE_DEFS
 class PygameRenderer(RendererBase):
     def __init__(self, settings: Dict[str, Any]):
         pygame.init()
-        pygame.display.set_caption("Tetris (Group Project)")
+        pygame.display.set_caption("Tetris")
         self.settings = settings
 
-        self.cell = int(settings.get("cell_size", 30))
+        self.cell = int(settings.get("cell_size", 40))
         self.cols, self.rows = 10, 20
 
-        self.panel_w = self.cell * 6
+        self.panel_w = self.cell * 7
         self.w = self.cell * self.cols + self.panel_w
         self.h = self.cell * self.rows
 
@@ -28,16 +28,20 @@ class PygameRenderer(RendererBase):
             self.screen = pygame.display.set_mode((self.w, self.h))
         self.clock = pygame.time.Clock()
 
-        # 使用支持中文的字體
-        # 嘗試常見的中文字體，如果都找不到則使用系統默認字體
-        chinese_fonts = ['Microsoft JhengHei', 'Microsoft YaHei', 'SimHei', 'Arial Unicode MS', 'sans-serif']
-        self.font = pygame.font.SysFont(chinese_fonts, 24)
-        self.font_big = pygame.font.SysFont(chinese_fonts, 40)
+        # Set up fonts
+        try:
+            self.font = pygame.font.Font('/game_font.otf', 20)
+            self.font_big = pygame.font.Font('/game_font.otf', 48)
+            self.font_small = pygame.font.Font('/game_font.otf', 16)
+        except:
+            self.font = pygame.font.Font(None, 20)
+            self.font_big = pygame.font.Font(None, 48)
+            self.font_small = pygame.font.Font(None, 16)
 
-        self.bg = (18, 18, 18)
-        self.grid_line = (40, 40, 40)
-        self.panel_bg = (24, 24, 24)
-        self.text_color = (230, 230, 230)
+        self.bg = (20, 20, 30)
+        self.grid_line = (50, 50, 60)
+        self.panel_bg = (30, 30, 40)
+        self.text_color = (240, 240, 250)
         self.is_fullscreen = fullscreen
 
     def tick(self) -> int:
@@ -65,8 +69,14 @@ class PygameRenderer(RendererBase):
     def shutdown(self) -> None:
         pygame.quit()
 
-    def _draw_text(self, text: str, x: int, y: int, big: bool = False) -> None:
-        surf = (self.font_big if big else self.font).render(text, True, self.text_color)
+    def _draw_text(self, text: str, x: int, y: int, big: bool = False, small: bool = False) -> None:
+        if big:
+            font = self.font_big
+        elif small:
+            font = self.font_small
+        else:
+            font = self.font
+        surf = font.render(text, True, self.text_color)
         self.screen.blit(surf, (x, y))
 
     def _draw_cell(self, x: int, y: int, color: Tuple[int, int, int], inset: int = 2) -> None:
@@ -101,40 +111,45 @@ class PygameRenderer(RendererBase):
     def draw_menu(self, player_name: str, hint: str, highscores: List[Dict[str, Any]], 
                   music_volume: float = 0.5, sfx_volume: float = 0.5) -> None:
         self.begin_frame()
-        self._draw_text("TETRIS", 30, 20, big=True)
-        self._draw_text("Enter: Start Game", 30, 80)
-        self._draw_text("ESC: Quit", 30, 110)
         
-        # Volume controls
-        self._draw_text("Volume Controls:", 30, 260)
-        self._draw_text(f"Music (Up/Down): {int(music_volume * 100)}%", 30, 290)
-        self._draw_text(f"SFX (Left/Right): {int(sfx_volume * 100)}%", 30, 320)
+        # Title and instructions
+        self._draw_text("TETRIS", 40, 30, big=True)
+        self._draw_text("-" * 30, 40, 95)
         
-        # Draw volume bars
-        bar_width = 200
-        bar_height = 20
+        self._draw_text("Enter your name:", 40, 120)
+        self._draw_text(f">> {player_name}_", 60, 155)
         
-        # Music volume bar
-        pygame.draw.rect(self.screen, (60, 60, 60), pygame.Rect(30, 350, bar_width, bar_height))
-        pygame.draw.rect(self.screen, (100, 200, 100), pygame.Rect(30, 350, int(bar_width * music_volume), bar_height))
-        pygame.draw.rect(self.screen, (80, 80, 80), pygame.Rect(30, 350, bar_width, bar_height), 2)
+        self._draw_text("Controls:", 40, 210)
+        self._draw_text("ENTER - Start Game", 60, 240, small=True)
+        self._draw_text("ESC - Quit", 60, 260, small=True)
         
-        # SFX volume bar
-        pygame.draw.rect(self.screen, (60, 60, 60), pygame.Rect(30, 380, bar_width, bar_height))
-        pygame.draw.rect(self.screen, (100, 150, 200), pygame.Rect(30, 380, int(bar_width * sfx_volume), bar_height))
-        pygame.draw.rect(self.screen, (80, 80, 80), pygame.Rect(30, 380, bar_width, bar_height), 2)
+        # Volume section
+        self._draw_text("Volume:", 40, 310)
+        self._draw_text(f"Music (Up/Down): {int(music_volume * 100):3d}%", 60, 340, small=True)
         
-        self._draw_text("Enter Player Name (Type to edit, Backspace to delete):", 30, 160)
-        self._draw_text(f"> {player_name}", 30, 190)
+        bar_width = 150
+        bar_height = 16
+        pygame.draw.rect(self.screen, (60, 60, 70), pygame.Rect(240, 340, bar_width, bar_height))
+        pygame.draw.rect(self.screen, (100, 200, 100), pygame.Rect(240, 340, int(bar_width * music_volume), bar_height))
+        pygame.draw.rect(self.screen, (150, 150, 160), pygame.Rect(240, 340, bar_width, bar_height), 1)
+        
+        self._draw_text(f"SFX (Left/Right): {int(sfx_volume * 100):3d}%", 60, 375, small=True)
+        pygame.draw.rect(self.screen, (60, 60, 70), pygame.Rect(240, 375, bar_width, bar_height))
+        pygame.draw.rect(self.screen, (100, 150, 200), pygame.Rect(240, 375, int(bar_width * sfx_volume), bar_height))
+        pygame.draw.rect(self.screen, (150, 150, 160), pygame.Rect(240, 375, bar_width, bar_height), 1)
+        
         if hint:
-            self._draw_text(hint, 30, 230)
+            self._draw_text(hint, 40, 425)
 
-        px = self.cell * self.cols + 20
-        self._draw_text("High Scores (Top 10)", px, 20)
-        y = 60
+        # High scores panel on the right
+        px = self.cell * self.cols + 30
+        self._draw_text("HIGH SCORES", px, 30)
+        self._draw_text("-" * 18, px, 65)
+        y = 95
         for i, row in enumerate(highscores[:10], start=1):
-            self._draw_text(f"{i:2d}. {row['name']:<10} {row['score']}", px, y)
-            y += 24
+            score_text = f"{i:2d}. {row['name']:<12} {row['score']:>8d}"
+            self._draw_text(score_text, px, y, small=True)
+            y += 25
 
         self.end_frame()
 
@@ -166,26 +181,35 @@ class PygameRenderer(RendererBase):
         for c in active.cells():
             self._draw_cell(c.x, c.y, active.color)
 
-        px = self.cell * self.cols + 20
-        self._draw_text(f"Score: {score}", px, 20)
-        self._draw_text(f"Level: {level}", px, 50)
-        self._draw_text(f"Lines: {total_lines}", px, 80)
+        px = self.cell * self.cols + 25
+        
+        # Stats section
+        self._draw_text("SCORE", px, 25)
+        self._draw_text(str(score), px, 55, big=True)
+        
+        self._draw_text("LEVEL", px, 115)
+        self._draw_text(str(level), px, 145, big=True)
+        
+        self._draw_text("LINES", px, 205)
+        self._draw_text(str(total_lines), px, 235, big=True)
 
-        self._draw_text("Next", px, 130)
-        y = 150
+        # Next section
+        self._draw_text("NEXT", px, 295)
+        y = 330
         for k in next_kinds[:3]:
             self._draw_mini_piece(k, y)
-            y += 90
+            y += 80
 
-        self._draw_text("Hold (C)", px, 420)
+        # Hold section
+        self._draw_text("HOLD", px, 570)
         if hold_kind:
-            self._draw_mini_piece(hold_kind, 440)
+            self._draw_mini_piece(hold_kind, 605)
         else:
-            self._draw_text("(empty)", px, 450)
+            self._draw_text("(empty)", px, 610)
 
-        self._draw_text("P: Pause", px, 560)
-        self._draw_text("Space: Hard Drop", px, 584)
-        self._draw_text("ESC: Menu", px, 608)
+        # Controls at bottom
+        self._draw_text("P: Pause  C: Hold", px, 710, small=True)
+        self._draw_text("ESC: Menu", px, 730, small=True)
 
         if paused:
             overlay = pygame.Surface((self.cell * self.cols, self.h), pygame.SRCALPHA)
@@ -197,18 +221,22 @@ class PygameRenderer(RendererBase):
 
     def draw_game_over(self, score: int, level: int, total_lines: int, highscores: List[Dict[str, Any]]) -> None:
         self.begin_frame()
-        self._draw_text("GAME OVER", 30, 30, big=True)
-        self._draw_text(f"Score: {score}", 30, 90)
-        self._draw_text(f"Level: {level}", 30, 120)
-        self._draw_text(f"Lines: {total_lines}", 30, 150)
-        self._draw_text("R: Restart", 30, 200)
-        self._draw_text("ESC: Menu", 30, 230)
+        self._draw_text("GAME OVER", 40, 40, big=True)
+        self._draw_text("─" * 30, 40, 105)
+        
+        self._draw_text(f"Final Score: {score}", 50, 150)
+        self._draw_text(f"Level: {level}", 50, 190)
+        self._draw_text(f"Lines: {total_lines}", 50, 230)
+        
+        self._draw_text("R - Restart  |  ESC - Menu", 50, 300)
 
-        px = self.cell * self.cols + 20
-        self._draw_text("High Scores (Top 10)", px, 20)
-        y = 60
+        px = self.cell * self.cols + 30
+        self._draw_text("HIGH SCORES", px, 40)
+        self._draw_text("─" * 18, px, 75)
+        y = 105
         for i, row in enumerate(highscores[:10], start=1):
-            self._draw_text(f"{i:2d}. {row['name']:<10} {row['score']}", px, y)
-            y += 24
+            score_text = f"{i:2d}. {row['name']:<12} {row['score']:>8d}"
+            self._draw_text(score_text, px, y, small=True)
+            y += 25
 
         self.end_frame()
